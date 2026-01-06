@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import { Badge } from '@/components/ui/badge';
+import GPAIcon from '@/components/GPAIcon';
 
 interface PowerData {
   timestamp: number;
@@ -96,7 +97,11 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="col-span-1 md:col-span-1 p-6 bg-card border-border flex items-center justify-center">
+            <GPAIcon power={currentPower} />
+          </Card>
+
           <Card className="p-6 bg-card border-border hover:border-primary transition-colors">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-muted-foreground uppercase tracking-wider">
