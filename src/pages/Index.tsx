@@ -9,6 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 interface PowerData {
   timestamp: number;
@@ -20,8 +25,12 @@ interface ShutdownLog {
   startTime: Date;
   endTime: Date;
   duration: number;
-  reason: string;
 }
+
+type DateRange = {
+  from: Date | undefined;
+  to: Date | undefined;
+};
 
 const Index = () => {
   const [powerData, setPowerData] = useState<PowerData[]>([]);
@@ -30,41 +39,49 @@ const Index = () => {
   const [avgPower, setAvgPower] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
   const [showLogDialog, setShowLogDialog] = useState(false);
-  const [shutdownLogs] = useState<ShutdownLog[]>([
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [allShutdownLogs] = useState<ShutdownLog[]>([
     {
       id: 1,
       startTime: new Date('2026-01-06T08:15:00'),
       endTime: new Date('2026-01-06T09:45:00'),
-      duration: 90,
-      reason: 'Плановое техническое обслуживание'
+      duration: 90
     },
     {
       id: 2,
       startTime: new Date('2026-01-05T14:30:00'),
       endTime: new Date('2026-01-05T15:10:00'),
-      duration: 40,
-      reason: 'Аварийная остановка - перегрев'
+      duration: 40
     },
     {
       id: 3,
       startTime: new Date('2026-01-04T22:00:00'),
       endTime: new Date('2026-01-05T06:00:00'),
-      duration: 480,
-      reason: 'Ночное обслуживание'
+      duration: 480
     },
     {
       id: 4,
       startTime: new Date('2026-01-03T11:20:00'),
       endTime: new Date('2026-01-03T11:35:00'),
-      duration: 15,
-      reason: 'Сброс параметров'
+      duration: 15
     },
     {
       id: 5,
       startTime: new Date('2026-01-02T16:45:00'),
       endTime: new Date('2026-01-02T18:30:00'),
-      duration: 105,
-      reason: 'Замена фильтров'
+      duration: 105
+    },
+    {
+      id: 6,
+      startTime: new Date('2026-01-01T10:00:00'),
+      endTime: new Date('2026-01-01T11:20:00'),
+      duration: 80
+    },
+    {
+      id: 7,
+      startTime: new Date('2025-12-30T15:30:00'),
+      endTime: new Date('2025-12-30T16:00:00'),
+      duration: 30
     }
   ]);
 
@@ -148,6 +165,33 @@ const Index = () => {
     return `${mins} мин`;
   };
 
+  const filteredLogs = allShutdownLogs.filter((log) => {
+    if (!dateRange.from && !dateRange.to) return true;
+    
+    const logDate = new Date(log.startTime);
+    logDate.setHours(0, 0, 0, 0);
+    
+    if (dateRange.from && dateRange.to) {
+      const from = new Date(dateRange.from);
+      const to = new Date(dateRange.to);
+      from.setHours(0, 0, 0, 0);
+      to.setHours(23, 59, 59, 999);
+      return logDate >= from && logDate <= to;
+    }
+    
+    if (dateRange.from) {
+      const from = new Date(dateRange.from);
+      from.setHours(0, 0, 0, 0);
+      return logDate >= from;
+    }
+    
+    return true;
+  });
+
+  const resetFilter = () => {
+    setDateRange({ from: undefined, to: undefined });
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -188,9 +232,56 @@ const Index = () => {
               Журнал остановок ГПА
             </DialogTitle>
           </DialogHeader>
+
+          <div className="flex items-center gap-3 mt-4 mb-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start text-left font-normal">
+                  <Icon name="Calendar" className="mr-2" size={16} />
+                  {dateRange.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, 'dd.MM.yyyy', { locale: ru })} - {format(dateRange.to, 'dd.MM.yyyy', { locale: ru })}
+                      </>
+                    ) : (
+                      format(dateRange.from, 'dd.MM.yyyy', { locale: ru })
+                    )
+                  ) : (
+                    <span>Выбрать период</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={(range) => setDateRange(range || { from: undefined, to: undefined })}
+                  locale={ru}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+            
+            {(dateRange.from || dateRange.to) && (
+              <Button variant="ghost" onClick={resetFilter} size="sm">
+                <Icon name="X" className="mr-1" size={16} />
+                Сбросить
+              </Button>
+            )}
+            
+            <div className="ml-auto text-sm text-muted-foreground">
+              Найдено: <span className="font-bold text-foreground">{filteredLogs.length}</span>
+            </div>
+          </div>
           
-          <div className="space-y-3 mt-4">
-            {shutdownLogs.map((log, index) => (
+          <div className="space-y-3">
+            {filteredLogs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Icon name="Search" className="mx-auto mb-2" size={32} />
+                <p>Остановок за выбранный период не найдено</p>
+              </div>
+            ) : (
+              filteredLogs.map((log, index) => (
               <Card key={log.id} className="p-4 bg-muted border-border hover:border-primary transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -215,35 +306,32 @@ const Index = () => {
                         <span className="font-medium">Запуск:</span>
                         <span>{formatDate(log.endTime)}</span>
                       </div>
-                      
-                      <div className="flex items-center gap-2 text-foreground mt-3">
-                        <Icon name="AlertCircle" size={16} className="text-yellow-500" />
-                        <span className="font-medium">Причина:</span>
-                        <span>{log.reason}</span>
-                      </div>
                     </div>
                   </div>
                 </div>
               </Card>
-            ))}
+              ))
+            )}
           </div>
           
-          <div className="mt-6 p-4 bg-muted rounded-lg border border-border">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <Icon name="BarChart3" className="text-primary" size={20} />
-                <span className="text-muted-foreground">Всего остановок:</span>
-                <span className="font-bold text-foreground">{shutdownLogs.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon name="Timer" className="text-secondary" size={20} />
-                <span className="text-muted-foreground">Общий простой:</span>
-                <span className="font-bold text-foreground">
-                  {formatDuration(shutdownLogs.reduce((sum, log) => sum + log.duration, 0))}
-                </span>
+          {filteredLogs.length > 0 && (
+            <div className="mt-6 p-4 bg-muted rounded-lg border border-border">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Icon name="BarChart3" className="text-primary" size={20} />
+                  <span className="text-muted-foreground">Всего остановок:</span>
+                  <span className="font-bold text-foreground">{filteredLogs.length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Icon name="Timer" className="text-secondary" size={20} />
+                  <span className="text-muted-foreground">Общий простой:</span>
+                  <span className="font-bold text-foreground">
+                    {formatDuration(filteredLogs.reduce((sum, log) => sum + log.duration, 0))}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
