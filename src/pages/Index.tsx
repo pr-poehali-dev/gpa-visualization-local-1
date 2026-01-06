@@ -287,7 +287,7 @@ const Index = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
-                        Остановка #{shutdownLogs.length - index}
+                        Остановка #{filteredLogs.length - index}
                       </Badge>
                       <Badge variant="outline" className="bg-muted-foreground/10">
                         {formatDuration(log.duration)}
